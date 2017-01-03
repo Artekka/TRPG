@@ -2,3 +2,25 @@ input[name="classes"]:focus {
   color: blue;
   border: 1px solid blue;
 }
+
+.combatInfo {
+  width: 75%;
+  float: left;
+  margin: 0;
+  padding: 0;
+}
+
+.statsInfo {
+  width:25%;
+  float:left;
+  margin: 0;
+  padding: 0;
+}
+
+.stats {
+  float: right;
+}
+
+.userClassStats div, .enemyClassStats div {
+  width: 100%;
+}

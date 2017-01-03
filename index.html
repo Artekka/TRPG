@@ -2,7 +2,6 @@
 <html>
 <head>
 <meta title="Tactical RPG">
-<link rel="stylesheet" type="text/css" href="css/main.css">
 </head>
 
 <body>
@@ -19,23 +18,44 @@
   <input type="button" value="fight" class="fightButton" id="fightButton"></input>
 </div>
 
+<hr>
+<div class="combatInfo">
+    <div id="matchup">
+    &nbsp;
+    </div>
 
+    <div id="advantage">
+    &nbsp;
+    </div>
 
-<div id="matchup">
-&nbsp;
+    <div id="battle">
+    &nbsp;
+    </div>
 </div>
-
-<div id="advantage">
-&nbsp;
+  
+<div class="statsInfo">
+  <div class="userClassStats">
+    <div>User</div>
+    <div id="className" class="stats"></div>
+    <div id="classHP" class="stats"></div>
+	<div id="classArmor" class="stats"></div>
+    <div id="classDamage" class="stats"></div>
+    <div id="classAccuracy" class="stats"></div>
+    <div id="classCritical" class="stats"></div>
+  </div>
+  <br>
+  <div class="enemyClassStats">
+    <div>Enemy</div>
+    <div id="enemyName" class="stats"></div>
+    <div id="enemyHP" class="stats"></div>
+	<div id="enemyArmor" class="stats"></div>
+    <div id="enemyDamage" class="stats"></div>
+    <div id="enemyAccuracy" class="stats"></div>
+    <div id="enemyCritical" class="stats"></div>
+  </div>
 </div>
-
-<div id="battle">
-&nbsp;
-</div>
-
-
-
-<script src="js/main.js"></script>
+  
+  
 </body>
 
 </html>

@@ -11,7 +11,8 @@ charClasses.archer = {
 	armor: 20,
     damage: 100,
     accuracy: 75,
-    critical: 20
+    critical: 20,
+    skillShot: 20
 };
 
 charClasses.axe = {
@@ -20,7 +21,8 @@ charClasses.axe = {
 	armor: 40,
     damage: 120,
     accuracy: 70,
-    critical: 15
+    critical: 15,
+    skillShot: 20
 };
 
 charClasses.caster = {
@@ -29,7 +31,8 @@ charClasses.caster = {
 	armor: 10,
     damage: 100,
     accuracy: 85,
-    critical: 10
+    critical: 10,
+    skillShot: 10
 };
 
 charClasses.spear = {
@@ -38,7 +41,8 @@ charClasses.spear = {
 	armor: 60,
     damage: 100,
     accuracy: 80,
-    critical: 15
+    critical: 15,
+    skillShot: 25
 };
 
 charClasses.sword = {
@@ -47,7 +51,8 @@ charClasses.sword = {
 	armor: 70,
     damage: 90,
     accuracy: 85,
-    critical: 10
+    critical: 10,
+    skillShot: 20
 };
 
 
@@ -291,7 +296,6 @@ function chooseClass(value) {
 	userClass.class = value;
 }
 
-
 /*****************************	
 Combat
 *****************************/
@@ -308,6 +312,33 @@ var battleDIV = document.getElementById("battle");
 var matchupDIV = document.getElementById("matchup");
 	matchupDIV.innerHTML = ("<p>" + matchup + "</p>");
 
+var userClassDIV = document.getElementById("className");
+    userClassDIV.innerHTML = ("Class: " + "<span class='stats'>" + userClass.class + "</p>");
+var userHPDIV = document.getElementById("classHP");
+    userHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + userClass.hitPoints + "</p>");
+var userArmorDIV = document.getElementById("classArmor");
+    userArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + userClass.armor + "</p>");
+var userDamageDIV = document.getElementById("classDamage");
+    userDamageDIV.innerHTML = ("Damage" + "<span class='stats'>" + Math.round(userClass.damage, 0) + "</p>");
+var userAccuracyDIV = document.getElementById("classAccuracy");
+    userAccuracyDIV.innerHTML = ("Accuracy: " + "<span class='stats'>" + Math.round(userClass.accuracy, 0) + "</p>");
+var userCriticalDIV = document.getElementById("classCritical");
+    userCriticalDIV.innerHTML = ("Critical: " + "<span class='stats'>" + userClass.critical + "</p>");
+
+var enemyClassDIV = document.getElementById("enemyName");
+    enemyClassDIV.innerHTML = ("Class: " + "<span class='stats'>" + enemyClass.class + "</p>");
+var enemyHPDIV = document.getElementById("enemyHP");
+    enemyHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + enemyClass.hitPoints + "</p>");
+var enemyArmorDIV = document.getElementById("enemyArmor");
+    enemyArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + enemyClass.armor + "</p>");
+var enemyDamageDIV = document.getElementById("enemyDamage");
+    enemyDamageDIV.innerHTML = ("Damage" + "<span class='stats'>" + Math.round(enemyClass.damage, 0) + "</p>");
+var enemyAccuracyDIV = document.getElementById("enemyAccuracy");
+    enemyAccuracyDIV.innerHTML = ("Accuracy: " + "<span class='stats'>" + Math.round(enemyClass.accuracy, 0) + "</p>");
+var enemyCriticalDIV = document.getElementById("enemyCritical");
+    enemyCriticalDIV.innerHTML = ("Critical: " + "<span class='stats'>" + enemyClass.critical + "</p>");
+
+
 /*****************************	
 Combat Mechanics
 *****************************/
@@ -323,14 +354,14 @@ while(combat) {
 var i = 1;
 	
     while(totalDamage < enemyClass.hitPoints) {
-		var randomRoll = Math.round(Math.random() * 100);
+		var randomRoll_1 = Math.round(Math.random() * 100);
 		var randomRoll_2 = Math.round(Math.random() * 100);
 		var randomRoll_3 = Math.round(Math.random() * 100);
         var randomRoll_4 = Math.round(Math.random() * 100);
-		var hitCheck = randomRoll <= userClass.accuracy;
+		var hitCheck = randomRoll_1 <= userClass.accuracy;
 		var doubleStrike = randomRoll_2 <= 10;
 		var critHit = randomRoll_3 <= userClass.critical;
-        var armorPierce = randomRoll_4 <= 25;
+        var skillShot = randomRoll_4 <= userClass.skillShot;
 	
 	if (hitCheck) {
 		console.log("Round " + i);
@@ -340,10 +371,12 @@ var i = 1;
 			console.log("Double Strike!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Double Strike!" + "</p>");
 		}
-        if (armorPierce) {
+        if (skillShot) {
+          if (userClass.class === "sword") {
 			damageThisRound = Math.round(userClass.damage);
-			console.log("Armor Pierced!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Armor Pierced!" + "</p>");
+			console.log("You used your special skill!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "INSERT_SKILL_NAME" + "</p>");
+            }
 		}
 		if (critHit) {
 			damageThisRound *= 1.5;
@@ -353,7 +386,7 @@ var i = 1;
 		console.log("You hit for " + damageThisRound + " damage!");
 		battleDIV.insertAdjacentHTML("beforeend","<p>" + "You hit for " + damageThisRound + " damage!" + "</p>");
 		totalDamage += damageThisRound;
-		console.log(randomRoll + " vs " + Math.round(userClass.accuracy) + " accuracy.");
+		console.log(randomRoll_1 + " vs " + Math.round(userClass.accuracy) + " accuracy.");
 		i++;
 		if (totalDamage >= enemyClass.hitPoints) {
 				console.log("You killed the enemy!");
@@ -364,11 +397,11 @@ var i = 1;
 		damageThisRound = damageReset;
 		}
         
-        if (randomRoll > userClass.accuracy) {
+        if (randomRoll_1 > userClass.accuracy) {
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Round " + i + "</p>");
             console.log("You miss!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You miss!" + "</p>");
-			console.log(randomRoll + " vs " + Math.round(userClass.accuracy) + " accuracy.");
+			console.log(randomRoll_1 + " vs " + Math.round(userClass.accuracy) + " accuracy.");
 			damageThisRound = damageReset;
 			i++;
         }
