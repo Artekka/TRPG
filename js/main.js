@@ -7,7 +7,7 @@ var charClasses = {};
 
 charClasses.archer = {
     class: "archer",
-    hitPoints: 900,
+    hitPoints: 350,
 	armor: 20,
     damage: 100,
     accuracy: 75,
@@ -17,7 +17,7 @@ charClasses.archer = {
 
 charClasses.axe = {
     class: "axe",
-    hitPoints: 900,
+    hitPoints: 500,
 	armor: 40,
     damage: 120,
     accuracy: 70,
@@ -27,7 +27,7 @@ charClasses.axe = {
 
 charClasses.caster = {
     class: "caster",
-    hitPoints: 700,
+    hitPoints: 200,
 	armor: 10,
     damage: 200,
     accuracy: 85,
@@ -37,7 +37,7 @@ charClasses.caster = {
 
 charClasses.spear = {
     class: "spear",
-    hitPoints: 1000,
+    hitPoints: 550,
 	armor: 60,
     damage: 100,
     accuracy: 80,
@@ -47,7 +47,7 @@ charClasses.spear = {
 
 charClasses.sword = {
     class: "sword",
-    hitPoints: 1100,
+    hitPoints: 600,
 	armor: 70,
     damage: 90,
     accuracy: 85,
@@ -343,11 +343,11 @@ var enemyCriticalDIV = document.getElementById("enemyCritical");
 Combat Mechanics
 *****************************/
 
-var damageThisRound = Math.round(userClass.damage - enemyClass.armor, 0);
+var damageThisRound = Math.round(userClass.damage * (1-(0+(enemyClass.armor *0.01))), 0);
 var damageReset = damageThisRound;
 var totalDamage = 0;
 
-var damageThisRound_enemy = Math.round(enemyClass.damage - userClass.armor, 0);
+var damageThisRound_enemy = Math.round(enemyClass.damage * (1-(0+(userClass.armor * 0.01))), 0);
 var damageReset_enemy = damageThisRound_enemy;
 var totalDamage_enemy = 0;
 
@@ -365,6 +365,15 @@ var i = 1;
 		var hitCheck = randomRoll_1 <= userClass.accuracy;
 		var skillShot = randomRoll_2 <= userClass.skillShot;
 		var critHit = randomRoll_3 <= userClass.critical;
+      
+        var randomRoll_1_enemy = Math.round(Math.random() * 100);
+		var randomRoll_2_enemy = Math.round(Math.random() * 100);
+		var randomRoll_3_enemy = Math.round(Math.random() * 100);
+        var randomRoll_4_enemy = Math.round(Math.random() * 100);
+		var hitCheck_enemy = randomRoll_1_enemy <= enemyClass.accuracy;
+		var skillShot_enemy = randomRoll_2_enemy <= enemyClass.skillShot;
+		var critHit_enemy = randomRoll_3_enemy <= enemyClass.critical;
+      
 	
 	if (hitCheck) {
 		console.log("Round " + i);
@@ -422,9 +431,66 @@ var i = 1;
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You miss!" + "</p>");
 			console.log(randomRoll_1 + " vs " + Math.round(userClass.accuracy) + " accuracy.");
 			damageThisRound = damageReset;
+			//i++;
+        }
+      
+      
+      if (hitCheck_enemy) {
+        if (skillShot_enemy) {
+          if (enemyClass.class === "sword") {
+			damageThisRound_enemy *= 1.8;
+			console.log("The enemy used their skill! Double Strike!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Double Strike!" + "</p>");
+          }
+          if (enemyClass.class === "axe") {
+			damageThisRound_enemy = Math.round(enemyClass.damage - (userClass.armor * 0.7)) * 2;
+			console.log("The enemy used their special skill! Skull Splitter!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Skull Splitter!" + "</p>");
+          }
+          if (enemyClass.class === "spear") {
+			userClass.armor = enemyClass.armor * 2;
+			console.log("The enemy used their special skill! Bolster!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Bolster!" + "</p>");
+            userArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + enemyClass.armor + "</p>");
+          }
+          if (enemyClass.class === "caster") {
+			damageThisRound_enemy *= 3;
+			console.log("You used your special skill! Elemental Destruction!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Elemental Destruction!" + "</p>");
+          }
+          if (enemyClass.class === "archer") {
+			damageThisRound_enemy = Math.round(enemyClass.damage);
+			console.log("The enemy used their special skill! Armor Pierce!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Armor Pierce!" + "</p>");
+          }
+		}
+		if (critHit_enemy) {
+			damageThisRound_enemy *= 1.5;
+			console.log("Critical Hit!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Critical Hit!" + "</p>");
+		}
+		console.log("Enemy hit you for " + damageThisRound_enemy + " damage!");
+		battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy hit you for " + damageThisRound_enemy + " damage!" + "</p>");
+		totalDamage_enemy += damageThisRound_enemy;
+		console.log(randomRoll_1_enemy + " vs " + Math.round(enemyClass.accuracy) + " accuracy.");
+		i++;
+		if (totalDamage_enemy >= userClass.hitPoints) {
+				console.log("The enemy killed you!");
+				battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy killed you!" + "</p>");
+				combat = false;
+				break;
+			}
+		damageThisRound_enemy = damageReset_enemy;
+		}
+        
+        if (randomRoll_1_enemy > enemyClass.accuracy) {
+            console.log("The enemy missed!!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy missed!" + "</p>");
+			console.log(randomRoll_1_enemy + " vs " + Math.round(userClass.accuracy) + " accuracy.");
+			damageThisRound = damageReset;
 			i++;
         }
-	}
+        }
 	
 	combat = false;
 }
