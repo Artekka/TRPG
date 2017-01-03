@@ -3,13 +3,115 @@
 Character Classes
 *****************************/
 
+function characterClass() {};
+
+characterClass.prototype.class = "";
+characterClass.prototype.hitPoints = 0;
+characterClass.prototype.damage = 0;
+characterClass.prototype.armor = 0;
+characterClass.prototype.accuracy = 0;
+characterClass.prototype.critical = 0;
+characterClass.prototype.skillShot = 0;
+
+characterClass.prototype.getClass = function() {
+  return this.class;
+}
+
+characterClass.prototype.getHealth = function() {
+  return this.hitPoints;
+}
+
+characterClass.prototype.getDamage = function() {
+  return this.damage;
+}
+
+characterClass.prototype.getArmor = function() {
+  return this.armor;
+}
+
+characterClass.prototype.getAccuracy = function() {
+  return this.accuracy;
+}
+
+characterClass.prototype.getCritical = function() {
+  return this.critical;
+}
+
+characterClass.prototype.getSkillShot = function() {
+  return this.skillShot;
+}
+
+function classSelect(x) {
+  if (x === "archer") {
+    this.class = "archer";
+    this.hitPoints = 350;
+    this.damage = 100;
+    this.armor = 20;
+    this.accuracy = 75;
+    this.critical = 20;
+    this.skillShot = 20;
+    return charClasses.archer;
+  }
+  if (x === "sword") {
+    this.class = "sword";
+    this.hitPoints = 600;
+    this.damage = 90;
+    this.armor = 70;
+    this.accuracy = 85;
+    this.critical = 10;
+    this.skillShot = 20;
+    return charClasses.sword;
+  }
+  if (x === "axe") {
+    this.class = "axe";
+    this.hitPoints = 500;
+    this.damage = 170;
+    this.armor = 40;
+    this.accuracy = 70;
+    this.critical = 15;
+    this.skillShot = 15;
+    return charClasses.axe;
+  }
+  if (x === "caster") {
+    this.class = "caster";
+    this.hitPoints = 200;
+    this.damage = 200;
+    this.armor = 10;
+    this.accuracy = 85;
+    this.critical = 10;
+    this.skillShot = 10;
+    return charClasses.caster;
+  }
+  if (x === "spear") {
+    this.class = "spear";
+    this.hitPoints = 550;
+    this.damage = 100;
+    this.armor = 60;
+    this.accuracy = 80;
+    this.critical = 15;
+    this.skillShot = 25;
+    return charClasses.spear;
+  }
+}
+
+classSelect.prototype = new characterClass;
+
+function Enemy() {}
+
+Enemy.prototype = new characterClass;
+
+var player1 = new characterClass();
+
+var enemy1 = new Enemy();
+
+
 var charClasses = {};
 
 charClasses.archer = {
     class: "archer",
     hitPoints: 350,
-	armor: 20,
     damage: 100,
+	armor: 20,
     accuracy: 75,
     critical: 20,
     skillShot: 20
@@ -18,8 +120,8 @@ charClasses.archer = {
 charClasses.axe = {
     class: "axe",
     hitPoints: 500,
+    damage: 170,
 	armor: 40,
-    damage: 120,
     accuracy: 70,
     critical: 15,
     skillShot: 15
@@ -28,8 +130,8 @@ charClasses.axe = {
 charClasses.caster = {
     class: "caster",
     hitPoints: 200,
-	armor: 10,
     damage: 200,
+	armor: 10,
     accuracy: 85,
     critical: 10,
     skillShot: 10
@@ -38,8 +140,8 @@ charClasses.caster = {
 charClasses.spear = {
     class: "spear",
     hitPoints: 550,
-	armor: 60,
     damage: 100,
+	armor: 60,
     accuracy: 80,
     critical: 15,
     skillShot: 25
@@ -48,8 +150,8 @@ charClasses.spear = {
 charClasses.sword = {
     class: "sword",
     hitPoints: 600,
-	armor: 70,
     damage: 90,
+	armor: 70,
     accuracy: 85,
     critical: 10,
     skillShot: 20
@@ -60,6 +162,9 @@ charClasses.sword = {
 /*****************************
 User Class
 *****************************/
+/*
+Class Selection
+*/
 
 var userClass = prompt("Choose your class: sword | axe | spear | caster | archer").toLowerCase();
 
@@ -67,13 +172,8 @@ var userClass = prompt("Choose your class: sword | axe | spear | caster | archer
 
 	userClass = charClasses[userClass];
 
-/*
-Class Selection
-*/
-
-function chooseClass(value) {
-  value = charClasses[userClass];
-  return charClasses[userClass];
+function chooseClass(id) {
+  return id;
 }
 
 
@@ -305,11 +405,11 @@ Combat
 /*****************************	
 UI
 *****************************/
-document.getElementById("sword").addEventListener ("click", chooseClass());
-document.getElementById("axe").addEventListener ("click", chooseClass());
-document.getElementById("spear").addEventListener ("click", chooseClass());
-document.getElementById("caster").addEventListener ("click", chooseClass());
-document.getElementById("archer").addEventListener ("click", chooseClass());
+document.getElementById("sword").addEventListener ("click", chooseClass(), false);
+document.getElementById("axe").addEventListener ("click", chooseClass(), false);
+document.getElementById("spear").addEventListener ("click", chooseClass(), false);
+document.getElementById("caster").addEventListener ("click", chooseClass(), false);
+document.getElementById("archer").addEventListener ("click", chooseClass(), false);
 
 var advantageDIV = document.getElementById("advantage");
     advantageDIV.innerHTML = ("<p>" + advantage + "</p>");
@@ -371,15 +471,11 @@ var damageThisRound_enemy = Math.round(enemyClass.damage * (1-(0+(userClass.armo
 var damageReset_enemy = damageThisRound_enemy;
 var totalDamage_enemy = 0;
 
-
-
-var combat = true;
-
-while(combat) {
-	
 var i = 1;
+
+function combat() {	
 	
-    while(totalDamage < enemyClass.hitPoints || totalDamage_enemy < userClass.hitPoints) {
+    if(totalDamage < enemyClass.hitPoints || totalDamage_enemy < userClass.hitPoints) {
 		var randomRoll_1 = Math.round(Math.random() * 100);
 		var randomRoll_2 = Math.round(Math.random() * 100);
 		var randomRoll_3 = Math.round(Math.random() * 100);
@@ -441,8 +537,7 @@ var i = 1;
 		if (totalDamage >= enemyClass.hitPoints) {
 				console.log("You killed the enemy!");
 				battleDIV.insertAdjacentHTML("beforeend","<p>" + "You killed the enemy!" + "</p>");
-				combat = false;
-				break;
+          return true;
 			}
 		damageThisRound = damageReset;
 		}
@@ -453,7 +548,6 @@ var i = 1;
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You miss!" + "</p>");
 			console.log(randomRoll_1 + " vs " + Math.round(userClass.accuracy) + " accuracy.");
 			damageThisRound = damageReset;
-			//i++;
         }
       
       
@@ -501,8 +595,7 @@ var i = 1;
 		if (totalDamage_enemy >= userClass.hitPoints) {
 				console.log("The enemy killed you!");
 				battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy killed you!" + "</p>");
-				combat = false;
-				break;
+          return true;
 			}
 		damageThisRound_enemy = damageReset_enemy;
 		}
@@ -515,6 +608,14 @@ var i = 1;
 			i++;
         }
         }
-	
-	combat = false;
+  return false;
 }
+
+function combatRound(){
+    var play combat();       // Fight and check if anybody is dead
+    if(play === false){       // If nobody is dead then do another round
+        setTimeout(combatRound, 1000);
+    }
+}
+
+//combatRound();
