@@ -67,6 +67,16 @@ var userClass = prompt("Choose your class: sword | axe | spear | caster | archer
 
 	userClass = charClasses[userClass];
 
+/*
+Class Selection
+*/
+
+function chooseClass(value) {
+  value = charClasses[userClass];
+  return charClasses[userClass];
+}
+
+
 console.log(userClass);
 
 /*****************************
@@ -288,14 +298,6 @@ if (userClass.class === "archer") {
 console.log(matchup);
 console.log(advantage);
 
-/*
-Class Selection
-*/
-
-function chooseClass(value) {
-	userClass.class = value;
-}
-
 /*****************************	
 Combat
 *****************************/
@@ -303,6 +305,11 @@ Combat
 /*****************************	
 UI
 *****************************/
+document.getElementById("sword").addEventListener ("click", chooseClass());
+document.getElementById("axe").addEventListener ("click", chooseClass());
+document.getElementById("spear").addEventListener ("click", chooseClass());
+document.getElementById("caster").addEventListener ("click", chooseClass());
+document.getElementById("archer").addEventListener ("click", chooseClass());
 
 var advantageDIV = document.getElementById("advantage");
     advantageDIV.innerHTML = ("<p>" + advantage + "</p>");
@@ -343,13 +350,28 @@ var enemyCriticalDIV = document.getElementById("enemyCritical");
 Combat Mechanics
 *****************************/
 
+function dmgRng(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return ((Math.random() * (max - min) + min) * 0.1).toFixed(2);
+}
+
+function dmgRng_enemy(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return ((Math.random() * (max - min) + min) * 0.1).toFixed(2);
+}
+
 var damageThisRound = Math.round(userClass.damage * (1-(0+(enemyClass.armor *0.01))), 0);
+
 var damageReset = damageThisRound;
 var totalDamage = 0;
 
 var damageThisRound_enemy = Math.round(enemyClass.damage * (1-(0+(userClass.armor * 0.01))), 0);
 var damageReset_enemy = damageThisRound_enemy;
 var totalDamage_enemy = 0;
+
+
 
 var combat = true;
 
@@ -376,16 +398,17 @@ var i = 1;
       
 	
 	if (hitCheck) {
+        damageThisRound *= dmgRng(8,10);
 		console.log("Round " + i);
 		battleDIV.insertAdjacentHTML("beforeend","<p>" + "Round " + i + "</p>");
         if (skillShot) {
           if (userClass.class === "sword") {
-			damageThisRound *= 1.8;
+			damageThisRound *= 1.8 * dmgRng(8,10);
 			console.log("You used your special skill! Double Strike!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Double Strike!" + "</p>");
           }
           if (userClass.class === "axe") {
-			damageThisRound = Math.round(userClass.damage - (enemyClass.armor * 0.7)) * 2;
+			damageThisRound = damageThisRound * 2 * dmgRng(8,10);
 			console.log("You used your special skill! Skull Splitter!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Skull Splitter!" + "</p>");
           }
@@ -396,7 +419,7 @@ var i = 1;
             userArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + userClass.armor + "</p>");
           }
           if (userClass.class === "caster") {
-			damageThisRound *= 3;
+			damageThisRound *= 3 * dmgRng(7,10);
 			console.log("You used your special skill! Elemental Destruction!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Elemental Destruction!" + "</p>");
           }
@@ -407,7 +430,7 @@ var i = 1;
           }
 		}
 		if (critHit) {
-			damageThisRound *= 1.5;
+			damageThisRound *= 1.5 * dmgRng(8,10);
 			console.log("Critical Hit!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Critical Hit!" + "</p>");
 		}
@@ -415,7 +438,6 @@ var i = 1;
 		battleDIV.insertAdjacentHTML("beforeend","<p>" + "You hit for " + damageThisRound + " damage!" + "</p>");
 		totalDamage += damageThisRound;
 		console.log(randomRoll_1 + " vs " + Math.round(userClass.accuracy) + " accuracy.");
-		i++;
 		if (totalDamage >= enemyClass.hitPoints) {
 				console.log("You killed the enemy!");
 				battleDIV.insertAdjacentHTML("beforeend","<p>" + "You killed the enemy!" + "</p>");
@@ -436,25 +458,27 @@ var i = 1;
       
       
       if (hitCheck_enemy) {
+        damageThisRound_enemy *= dmgRng(8,10);
         if (skillShot_enemy) {
           if (enemyClass.class === "sword") {
-			damageThisRound_enemy *= 1.8;
+			damageThisRound_enemy *= 1.8 * dmgRng(8,10);
 			console.log("The enemy used their skill! Double Strike!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Double Strike!" + "</p>");
           }
           if (enemyClass.class === "axe") {
-			damageThisRound_enemy = Math.round(enemyClass.damage - (userClass.armor * 0.7)) * 2;
+			damageThisRound_enemy = Math.round(enemyClass.damage - (userClass.armor * 0.7)) * 2 * dmgRng(8,10);
 			console.log("The enemy used their special skill! Skull Splitter!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Skull Splitter!" + "</p>");
           }
           if (enemyClass.class === "spear") {
-			userClass.armor = enemyClass.armor * 2;
+			enemyClass.armor = enemyClass.armor * 2;
 			console.log("The enemy used their special skill! Bolster!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Bolster!" + "</p>");
             userArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + enemyClass.armor + "</p>");
+            
           }
           if (enemyClass.class === "caster") {
-			damageThisRound_enemy *= 3;
+			damageThisRound_enemy *= 3 * dmgRng(8,10);
 			console.log("You used your special skill! Elemental Destruction!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Elemental Destruction!" + "</p>");
           }
@@ -465,7 +489,7 @@ var i = 1;
           }
 		}
 		if (critHit_enemy) {
-			damageThisRound_enemy *= 1.5;
+			damageThisRound_enemy *= 1.5 * dmgRng(8,10);
 			console.log("Critical Hit!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Critical Hit!" + "</p>");
 		}
@@ -487,7 +511,7 @@ var i = 1;
             console.log("The enemy missed!!");
 			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy missed!" + "</p>");
 			console.log(randomRoll_1_enemy + " vs " + Math.round(userClass.accuracy) + " accuracy.");
-			damageThisRound = damageReset;
+			damageThisRound_enemy = damageReset;
 			i++;
         }
         }
