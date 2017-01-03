@@ -19,3 +19,37 @@
 .userClassStats div, .enemyClassStats div {
   width: 100%;
 }
+
+#battle {
+  max-height: 600px;
+  overflow: scroll;
+}
+
+.roundCounter {
+  font-weight: bold;
+  border: 1px solid #000000;
+}
+
+/*
+
+HP is successfully updated and no longer
+interferes with damage calculations and
+kill or not
+
+Added to prototype:
+.faction
+.canmove
+.isMoving
+.canAction
+.actionsLeft
+.isAlive
+.isFacing
+.isSide
+.isBack
+
+Implement loop to check for isAlive.
+Any unit isAlive = false, then play
+death animation/fade out of map
+
+
+*/
