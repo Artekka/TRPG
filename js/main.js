@@ -22,14 +22,14 @@ charClasses.axe = {
     damage: 120,
     accuracy: 70,
     critical: 15,
-    skillShot: 20
+    skillShot: 15
 };
 
 charClasses.caster = {
     class: "caster",
     hitPoints: 700,
 	armor: 10,
-    damage: 100,
+    damage: 200,
     accuracy: 85,
     critical: 10,
     skillShot: 10
@@ -343,9 +343,13 @@ var enemyCriticalDIV = document.getElementById("enemyCritical");
 Combat Mechanics
 *****************************/
 
-var damageThisRound = Math.round(userClass.damage - enemyClass.armor);
+var damageThisRound = Math.round(userClass.damage - enemyClass.armor, 0);
 var damageReset = damageThisRound;
 var totalDamage = 0;
+
+var damageThisRound_enemy = Math.round(enemyClass.damage - userClass.armor, 0);
+var damageReset_enemy = damageThisRound_enemy;
+var totalDamage_enemy = 0;
 
 var combat = true;
 
@@ -353,30 +357,45 @@ while(combat) {
 	
 var i = 1;
 	
-    while(totalDamage < enemyClass.hitPoints) {
+    while(totalDamage < enemyClass.hitPoints || totalDamage_enemy < userClass.hitPoints) {
 		var randomRoll_1 = Math.round(Math.random() * 100);
 		var randomRoll_2 = Math.round(Math.random() * 100);
 		var randomRoll_3 = Math.round(Math.random() * 100);
         var randomRoll_4 = Math.round(Math.random() * 100);
 		var hitCheck = randomRoll_1 <= userClass.accuracy;
-		var doubleStrike = randomRoll_2 <= 10;
+		var skillShot = randomRoll_2 <= userClass.skillShot;
 		var critHit = randomRoll_3 <= userClass.critical;
-        var skillShot = randomRoll_4 <= userClass.skillShot;
 	
 	if (hitCheck) {
 		console.log("Round " + i);
 		battleDIV.insertAdjacentHTML("beforeend","<p>" + "Round " + i + "</p>");
-		if (doubleStrike) {
-			damageThisRound *= 2;
-			console.log("Double Strike!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Double Strike!" + "</p>");
-		}
         if (skillShot) {
           if (userClass.class === "sword") {
+			damageThisRound *= 1.8;
+			console.log("You used your special skill! Double Strike!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Double Strike!" + "</p>");
+          }
+          if (userClass.class === "axe") {
+			damageThisRound = Math.round(userClass.damage - (enemyClass.armor * 0.7)) * 2;
+			console.log("You used your special skill! Skull Splitter!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Skull Splitter!" + "</p>");
+          }
+          if (userClass.class === "spear") {
+			userClass.armor = userClass.armor * 2;
+			console.log("You used your special skill! Bolster!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Bolster!" + "</p>");
+            userArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + userClass.armor + "</p>");
+          }
+          if (userClass.class === "caster") {
+			damageThisRound *= 3;
+			console.log("You used your special skill! Elemental Destruction!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Elemental Destruction!" + "</p>");
+          }
+          if (userClass.class === "archer") {
 			damageThisRound = Math.round(userClass.damage);
-			console.log("You used your special skill!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "INSERT_SKILL_NAME" + "</p>");
-            }
+			console.log("You used your special skill! Armor Pierce!");
+			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Armor Pierce!" + "</p>");
+          }
 		}
 		if (critHit) {
 			damageThisRound *= 1.5;
