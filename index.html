@@ -2,20 +2,33 @@
 <html>
 <head>
 <meta title="Tactical RPG">
+<link rel="stylesheet" href="css/main.css">
 </head>
 
 <body>
 
 <div id="classDIV">
-  <button value="sword" onClick="chooseClass(value)">sword</input>
-  <button value="axe" onClick="chooseClass(value)">axe</input>
-  <button value="spear" onClick="chooseClass(value)">spear</input>
-  <button value="caster" onClick="chooseClass(value)">caster</input>
-  <button value="archer" onClick="chooseClass(value)">archer</input>
+  <p>User</p>
+  <button id="sword">sword</button>
+  <button id="axe">axe</button>
+  <button id="spear">spear</button>
+  <button id="caster">caster</button>
+  <button id="archer">archer</button>
 </div>
 	<br>
+  <hr>
+<div id="classDIV_enemy">
+  <p>Enemy</p>
+  <button id="sword_enemy">sword</button>
+  <button id="axe_enemy">axe</button>
+  <button id="spear_enemy">spear</button>
+  <button id="caster_enemy">caster</button>
+  <button id="archer_enemy">archer</button>
+</div>
+  </br>
+  <hr>
 <div>
-  <input type="button" value="fight" class="fightButton" id="fightButton"></input>
+  <button id="fight" value="fight" class="fightButton" id="fightButton">Fight</button>
 </div>
 
 <hr>
@@ -55,7 +68,7 @@
   </div>
 </div>
   
-  
+<script src="js/main.js"></script>
 </body>
 
 </html>
