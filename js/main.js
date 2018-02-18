@@ -1,10 +1,443 @@
+/* global Phaser */
 
-/*****************************
-Character Classes
+var game = new Phaser.Game(
+    1024, 768, 
+    Phaser.CANVAS, null, 
+    {
+        preload: preload,
+        create: create,
+        update: update,
+        render: render
+    });
+
+// Declaring any shared or global vars (outside of functions)
+var player, enemy, keyInputs, guideText, displayGuide;
+    
+function preload() {
+    // We use this to load all of the graphics and/or audio assets in this block of code        
+    // game.load.image(asset_id, path_to_asset)
+    
+    // Map
+    var bg, grid;
+    game.load.image("bg","img/map_openfield.png");
+    game.load.image("grid","img/map_grid_1024x768.png");
+    
+    // Characters
+    game.load.spritesheet("player", "img/crusader_se_atk.png", 170, 95);
+    game.load.spritesheet("enemy", "img/crusader_sw_atk.png", 170, 95);
+    
+    // Other elements to preload
+    var playerButtonAttack, playerButtonDefend, playerButtonSpecial;
+    
+    var enemyButtonAttack, enemyButtonDefend, enemyButtonSpecial;
+    
+    var dodge1, dodge2;
+    
+    game.load.image("playerButtonAttack","img/button_attack.png");
+    game.load.image("playerButtonDefend","img/button_defend.png");
+    game.load.image("playerButtonSpecial","img/button_special.png");
+    
+    game.load.image("enemyButtonAttack","img/button_attack.png");
+    game.load.image("enemyButtonDefend","img/button_defend.png");
+    game.load.image("enemyButtonSpecial","img/button_special.png");
+}
+
+function create() {
+    // We use this to create the world with our preloaded assets
+    // game.add.sprite(x, y, asset_id)
+    
+    // Map
+    
+    var bg = game.add.image(0, 0, "bg");
+    var grid = game.add.image(0, 0, "grid");
+    
+    // Units
+    player = game.add.sprite(64*4, 64*6, "player");
+    player.frame = 0;
+    player.animations.add("attack", [0, 1, 2, 3, 4, 5, 6, 0], 21, false);
+    player.animations.add("special", [0, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3, 4, 5, 6, 0], 42, false);
+    
+    enemy = game.add.sprite(64*8, 64*6, "enemy");
+    enemy.frame = 0;
+    enemy.animations.add("attack", [0, 1, 2, 3, 4, 5, 6, 0], 21, false);
+    enemy.animations.add("special", [0, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3, 4, 5, 6, 0], 42, false);
+    
+    classSelect("sword");
+    classSelect_enemy("archer");
+    
+    // Other elements
+    // Actions
+    var playerButtonAttack, playerButtonDefend, playerButtonSpecial;
+    var enemyButtonAttack, enemyButtonDefend, enemyButtonSpecial;
+    
+    playerButtonAttack = game.add.button(player.x - 256, player.y - 50, 'playerButtonAttack', playerAttack, this, 2, 1, 0);
+    playerButtonDefend = game.add.button(player.x - 256, player.y, 'playerButtonDefend', playerDefend, this, 2, 1, 0);
+    playerButtonSpecial = game.add.button(player.x - 256, player.y + 50, 'playerButtonSpecial', playerSpecial, this, 2, 1, 0);
+    
+    enemyButtonAttack = game.add.button(enemy.x + 256, enemy.y - 50, 'enemyButtonAttack', enemyAttack, this, 2, 1, 0);
+    enemyButtonDefend = game.add.button(enemy.x + 256, enemy.y, 'enemyButtonDefend', enemyDefend, this, 2, 1, 0);
+    enemyButtonSpecial = game.add.button(enemy.x + 256, enemy.y + 50, 'enemyButtonSpecial', enemySpecial, this, 2, 1, 0);
+    
+    // Grouping
+    
+    var playerMenuGroup = game.add.group();
+    playerMenuGroup.add(playerButtonAttack);
+    playerMenuGroup.add(playerButtonDefend);
+    playerMenuGroup.add(playerButtonSpecial);
+    
+    var enemyMenuGroup = game.add.group();
+    enemyMenuGroup.add(enemyButtonAttack);
+    enemyMenuGroup.add(enemyButtonDefend);
+    enemyMenuGroup.add(enemyButtonSpecial);
+    
+    playerMenuGroup.visible = false;
+    enemyMenuGroup.visible = false;
+    
+    // Physics and collision detection
+    // Phase has arcade and p2 physics systems to use
+    // game.physics.enable(asset_id, physics_system)
+    game.physics.enable(player, Phaser.Physics.ARCADE);
+    game.physics.enable(enemy, Phaser.Physics.ARCADE);
+    
+    player.body.collideWorldBounds = true;
+    enemy.body.collideWorldBounds = true;
+    
+    // Debug text here
+
+    guideText = "Click each unit to display an action menu. Each action does stuff! \n";
+    guideText += "Units move based on a 64px grid currently. Drag a unit and it will snap to the grid. \n";
+    guideText += "Arrow keys will do the same. Current keyboard movement is tied to both units arbitrarily/on purpose.";
+    
+    var textStyle = {
+        font: "20px Arial",
+        fill: "#fff",
+        backgroundColor: "#000"
+    };
+    
+    //game.add.text(x, y, value_to_display, value_styling)
+    
+    displayGuide = game.add.text(50, 650, guideText, textStyle);
+    
+    
+    // setting keyboard inputs for game to recognize
+    keyInputs = game.input.keyboard.createCursorKeys();
+    
+    // defining specific keys. Fix.
+    var k_tilde = game.input.keyboard.addKey(Phaser.Keyboard.TILDE);
+    var k_spacebar = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+    
+    player.inputEnabled = true;
+    player.input.enableDrag();
+    player.events.onInputDown.add(playerMenu, this);
+    
+    enemy.inputEnabled = true;
+    enemy.input.enableDrag();
+    enemy.events.onInputDown.add(enemyMenu, this);
+    
+    // Enable "Snapping" to my grid/tile based map and movement
+    player.input.enableSnap(64, 64, false, true);
+    enemy.input.enableSnap(64, 64, false, true);
+    
+    function playerMenu() {
+        if(playerMenuGroup.visible) {
+            playerMenuGroup.visible = false;
+        } else {
+            playerMenuGroup.visible = true;
+        }
+    }
+    
+    function enemyMenu() {
+        if(enemyMenuGroup.visible) {
+            enemyMenuGroup.visible = false;
+        } else {
+            enemyMenuGroup.visible = true;
+        }
+    }
+    
+    function playerAttack(sprite, pointer) {
+        player.animations.play("attack");
+        combat(player, enemy);
+    }
+    function playerDefend(sprite, pointer) {
+        dodge(1,0,player);
+        
+    }
+    function playerSpecial(sprite, pointer) {
+        player.animations.play("special");
+    }
+    
+    function enemyAttack(sprite, pointer) {
+        enemy.animations.play("attack");
+        combat(enemy, player);
+    }
+    function enemyDefend(sprite, pointer) {
+        dodge(-1,0,enemy);
+    }
+    function enemySpecial(sprite, pointer) {
+        enemy.animations.play("special");
+    }
+    
+    // Attach these functions to the action menu since animations aren't playable yet!
+    
+}
+
+function update() {
+    // Game Loop goes here
+    
+    // This is where we check states for any events that occur
+    // Use boolean to determine true/false w/ if (keyInputs.key_input.isDown/Up/whatever)
+    if (keyInputs.up.isDown) {
+        moveUnit(0,-1,player);
+        moveUnit(0,-1,enemy);
+    }
+    
+    if (keyInputs.down.isDown) {
+        moveUnit(0,1,player);
+        moveUnit(0,1,enemy);
+    }
+    
+    if (keyInputs.left.isDown) {
+        moveUnit(-1,0,player);
+        moveUnit(1,0,enemy);
+    }
+    
+    if (keyInputs.right.isDown) {
+        moveUnit(1,0,player);
+        moveUnit(-1,0,enemy);
+    }
+    
+    // Check for physics
+    //game.physics.arcade.overlap(player, enemy, scoring);
+    
+}
+
+function render() {
+    // debug info here
+    //game.debug.spriteInfo(player, 100, 100);
+    //game.debug.spriteInfo(enemy, 524, 100);
+    
+    function displayDebugInfoPlayer() {
+        this.game.debug.start(32, 64);
+        this.game.debug.line(`Class: ${this.player.className}`);
+        this.game.debug.line(`Hit Points: ${this.player.hitPoints}/${this.player.maxHitPoints}`);
+        this.game.debug.line(`Damage: ${this.player.damage}`);
+        this.game.debug.line(`Armor: ${this.player.armor}`);
+        this.game.debug.line(`Accuracy %: ${this.player.accuracy}`);
+        this.game.debug.line(`Critical %: ${this.player.critical}`);
+        this.game.debug.line(`Skill Shot %: ${this.player.skillShot}`);
+    }
+    function displayDebugInfoEnemy() {
+        this.game.debug.start(640, 64);
+        this.game.debug.line(`Class: ${this.enemy.className}`);
+        this.game.debug.line(`Hit Points: ${this.enemy.hitPoints}/${this.enemy.maxHitPoints}`);
+        this.game.debug.line(`Damage: ${this.enemy.damage}`);
+        this.game.debug.line(`Armor: ${this.enemy.armor}`);
+        this.game.debug.line(`Accuracy %: ${this.enemy.accuracy}`);
+        this.game.debug.line(`Critical %: ${this.enemy.critical}`);
+        this.game.debug.line(`Skill Shot %: ${this.enemy.skillShot}`);
+    }
+    displayDebugInfoPlayer();
+    displayDebugInfoEnemy();
+}
+
+// Function for collision event
+
+
+// Unit Movement
+function moveUnit(x, y, sprite) {
+    // Ripped from - http://www.html5gamedevs.com/topic/7361-tile-based-movement/
+    // Because we're adding 64 to the player's position, we need to prevent cases where the user tries to move  
+    // the player mid-move, knocking it off the grid. This is a crude way to do it but it works.  
+    if (sprite.isMoving) { 
+        return; 
+    }  
+    sprite.isMoving = true;  
+    // Tween the player to the next grid space over 100ms, and when done, allow the player to make another move
+    game.add.tween(sprite).to({
+        x: sprite.x + x * 64, 
+        y: sprite.y + y * 64
+    }, 100, Phaser.Easing.Quadratic.InOut, true).onComplete.add(function() {
+        sprite.isMoving = false;}, this);
+}
+
+function dodge(x, y, sprite) {
+    dodge1 = game.add.tween(sprite).to( { x: sprite.x - x * 64 }, 100, Phaser.Easing.Quadratic.InOut);
+    dodge2 = game.add.tween(sprite).to( { x: sprite.x }, 100, Phaser.Easing.Quadratic.InOut);
+    dodge1.chain(dodge2);
+    
+    dodge1.start();
+}
+
+
+function toggleGrid() {
+    
+}
+
+function combat(sprite1, sprite2) {
+/*  
+    var damage = sprite1.damage - sprite2.armor;
+    sprite2.hitPoints -= damage;
+    console.log(sprite2.hp);
+    return sprite2.hp;
+*/
+
+/*****************************	
+Combat Mechanics
 *****************************/
+var i = 1;
 
-//Base Class Stats
+function dmgRng(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return ((Math.random() * (max - min) + min) * 0.1).toFixed(2);
+}
 
+function dmgRng_enemy(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return ((Math.random() * (max - min) + min) * 0.1).toFixed(2);
+}
+
+var damageThisRound = Math.round(player.damage * (1-(0+(enemy.armor *0.01))), 0);
+
+var damageReset = damageThisRound;
+
+var damageThisRound_enemy = Math.round(enemy.damage * (1-(0+(player.armor * 0.01))), 0);
+var damageReset_enemy = damageThisRound_enemy;
+
+  if(enemy.hitPoints >= 0 || player.hitPoints >= 0) {
+		var randomRoll_1 = Math.round(Math.random() * 100);
+		var randomRoll_2 = Math.round(Math.random() * 100);
+		var randomRoll_3 = Math.round(Math.random() * 100);
+    var randomRoll_4 = Math.round(Math.random() * 100);
+		var hitCheck = randomRoll_1 <= player.accuracy;
+		var skillShot = randomRoll_2 <= player.skillShot;
+		var critHit = randomRoll_3 <= player.critical;
+      
+    var randomRoll_1_enemy = Math.round(Math.random() * 100);
+		var randomRoll_2_enemy = Math.round(Math.random() * 100);
+		var randomRoll_3_enemy = Math.round(Math.random() * 100);
+    var randomRoll_4_enemy = Math.round(Math.random() * 100);
+		var hitCheck_enemy = randomRoll_1_enemy <= enemy.accuracy;
+		var skillShot_enemy = randomRoll_2_enemy <= enemy.skillShot;
+		var critHit_enemy = randomRoll_3_enemy <= enemy.critical;
+   
+	
+	if (hitCheck) {
+        damageThisRound = Math.round(player.damage * (1-(0+(enemy.armor *0.01))), 0);
+        damageThisRound *= dmgRng(8,10);
+        damageThisRound = Math.round(damageThisRound, 0);
+		
+        if (skillShot) {
+          if (player.className === "Sword") {
+			damageThisRound *= 2.1 * dmgRng(8,10);
+            damageThisRound = Math.round(damageThisRound, 0);
+			game.debug.text("You used your special skill! Double Strike!",0,0);
+          }
+          if (player.className === "Axe") {
+			damageThisRound = (player.damage - (enemy.armor * 0.7)) * 2 * dmgRng(8,10);
+            damageThisRound = Math.round(damageThisRound, 0);
+			console.log("You used your special skill! Skull Splitter!");
+          }
+          if (player.className === "Spear") {
+			player.armor = player.armor * 2;
+			console.log("You used your special skill! Bolster!");
+          }
+          if (player.className === "Caster") {
+			damageThisRound *= 3 * dmgRng(7,10);
+            damageThisRound = Math.round(damageThisRound, 0);
+			console.log("You used your special skill! Elemental Destruction!");
+          }
+          if (player.className === "Archer") {
+			damageThisRound = player.damage;
+			console.log("You used your special skill! Armor Pierce!");
+          }
+		}
+		if (critHit) {
+			damageThisRound *= 1.5 * dmgRng(8,10);
+            damageThisRound = Math.round(damageThisRound, 0);
+			console.log("Critical Hit!");
+		}
+		console.log("You hit for " + damageThisRound + " damage!");
+		enemy.hitPoints -= Math.round(damageThisRound, 0);
+ 
+		if (enemy.hitPoints <= 0) {
+                enemy.hitPoints = 0;
+                enemy.isAlive = false;
+				console.log("You killed the enemy!");
+          
+          return true;
+			}
+      
+		damageThisRound = damageReset;
+		}
+        
+        if (randomRoll_1 > player.accuracy) {
+            console.log("You miss!");
+			console.log(randomRoll_1 + " vs " + Math.round(player.accuracy) + " accuracy.");
+			damageThisRound = damageReset;
+        }
+      
+      
+      if (hitCheck_enemy) {
+        damageThisRound_enemy = Math.round(enemy.damage * (1-(0+(player.armor * 0.01))), 0);
+        damageThisRound_enemy *= dmgRng(8,10);
+        damageThisRound_enemy = Math.round(damageThisRound_enemy, 0);
+        if (skillShot_enemy) {
+          if (enemy.className === "Sword") {
+			damageThisRound_enemy *= 2.1 * dmgRng(8,10);
+            damageThisRound_enemy = Math.round(damageThisRound_enemy, 0);
+			console.log("The enemy used their skill! Double Strike!");
+          }
+          if (enemy.className === "Axe") {
+			damageThisRound_enemy = (enemy.damage - (player.armor * 0.7)) * 2 * dmgRng(8,10);
+            damageThisRound_enemy = Math.round(damageThisRound_enemy, 0);
+			console.log("The enemy used their special skill! Skull Splitter!");
+          }
+          if (enemy.className === "Spear") {
+			enemyClass.armor = enemy.armor * 1.2;
+			console.log("The enemy used their special skill! Bolster!");
+            
+          }
+          if (enemy.className === "Caster") {
+			damageThisRound_enemy *= 3 * dmgRng(8,10);
+			console.log("You used your special skill! Elemental Destruction!");
+          }
+          if (enemy.className === "Archer") {
+			damageThisRound_enemy = enemy.damage;
+			console.log("The enemy used their special skill! Armor Pierce!");
+          }
+		}
+		if (critHit_enemy) {
+			damageThisRound_enemy *= 1.5 * dmgRng(8,10);
+            damageThisRound_enemy = Math.round(damageThisRound_enemy, 0);
+			console.log("Critical Hit!");
+		}
+		console.log("enemy hit you for " + damageThisRound_enemy + " damage!");
+		player.hitPoints -= Math.round(damageThisRound_enemy, 0);
+		console.log(randomRoll_1_enemy + " vs " + Math.round(enemy.accuracy) + " accuracy.");
+		i++;
+		if (player.hitPoints <= 0) {
+                player.hitPoints = 0;
+                player.isAlive = false;
+				console.log("The enemy killed you!");
+          
+          return true;
+			}
+		damageThisRound_enemy = damageReset_enemy;
+		}
+        
+        if (randomRoll_1_enemy > enemy.accuracy) {
+            console.log("The enemy missed!!");
+			console.log(randomRoll_1_enemy + " vs " + Math.round(player.accuracy) + " accuracy.");
+            
+			damageThisRound_enemy = damageReset;
+			i++;
+          }
+        }
+}
+
+// Eventually turn this into the class selection constructor
 function baseClasses(){};
 baseClasses.prototype.faction = "";
 baseClasses.prototype.className = "None";
@@ -50,743 +483,399 @@ function playerClass() {};
 
 playerClass.prototype = new baseClasses();
 
-var Player = new playerClass();
-
 function enemyClass() {};
 
 enemyClass.prototype = new baseClasses();
 
-var Enemy = new enemyClass();
+
 
 function classSelect(value) {
-  if (value === archer) {
-    Player.className = "Archer";
-    Player.hitPoints = 450;
-    Player.damage = 100;
-    Player.armor = 20;
-    Player.accuracy = 75;
-    Player.critical = 20;
-    Player.skillShot = 20;
-    PlayerStatsRefresh();
-    PlayerStatsRefreshUI();
-    console.log("Class selected: " + Player.className)
-    return;
-  }
-  if (value === sword) {
-    Player.className = "Sword";
-    Player.hitPoints = 600;
-    Player.damage = 90;
-    Player.armor = 70;
-    Player.accuracy = 85;
-    Player.critical = 10;
-    Player.skillShot = 20;
-    PlayerStatsRefresh();
-    PlayerStatsRefreshUI();
-    console.log("Class selected: " + Player.className)
-    return;
-  }
-  if (value === axe) {
-    Player.className = "Axe";
-    Player.hitPoints = 500;
-    Player.damage = 170;
-    Player.armor = 60;
-    Player.accuracy = 75;
-    Player.critical = 30;
-    Player.skillShot = 15;
-    PlayerStatsRefresh();
-    PlayerStatsRefreshUI();
-    console.log("Class selected: " + Player.className)
-    return;
-  }
-  if (value === caster) {
-    Player.className = "Caster";
-    Player.hitPoints = 300;
-    Player.damage = 200;
-    Player.armor = 10;
-    Player.accuracy = 85;
-    Player.critical = 20;
-    Player.skillShot = 15;
-    PlayerStatsRefresh();
-    PlayerStatsRefreshUI();
-    console.log("Class selected: " + Player.className)
-    return;
-  }
-  if (value === spear) {
-    Player.className = "Spear";
-    Player.hitPoints = 550;
-    Player.damage = 100;
-    Player.armor = 60;
-    Player.accuracy = 80;
-    Player.critical = 15;
-    Player.skillShot = 25;
-    PlayerStatsRefresh();
-    PlayerStatsRefreshUI();
-    console.log("Class selected: " + Player.className)
-    return;
-  }
-  else {
-    Player.className = "None";
-    Player.hitPoints = 0;
-    Player.damage = 0;
-    Player.armor = 0;
-    Player.accuracy = 0;
-    Player.critical = 0;
-    Player.skillShot = 0;
-    PlayerStatsRefresh();
-    PlayerStatsRefreshUI();
-    console.log("Class selected: " + Player.className)
-    return;
-  }
-
-
-  console.log(Player);
-}
-
-function classSelect_Enemy(value) {
-  if (value === archer) {
-    Enemy.className = "Archer";
-    Enemy.hitPoints = 450;
-    Enemy.damage = 100;
-    Enemy.armor = 20;
-    Enemy.accuracy = 75;
-    Enemy.critical = 20;
-    Enemy.skillShot = 20;
-    EnemyStatsRefresh();
-    EnemyStatsRefreshUI();
-    console.log("Enemy Class selected: " + Enemy.className)
-    return;
-  }
-  if (value === sword) {
-    Enemy.className = "Sword";
-    Enemy.hitPoints = 600;
-    Enemy.damage = 90;
-    Enemy.armor = 70;
-    Enemy.accuracy = 85;
-    Enemy.critical = 10;
-    Enemy.skillShot = 20;
-    EnemyStatsRefresh();
-    EnemyStatsRefreshUI();
-    console.log("Enemy Class selected: " + Enemy.className)
-    return;
-  }
-  if (value === axe) {
-    Enemy.className = "Axe";
-    Enemy.hitPoints = 500;
-    Enemy.damage = 170;
-    Enemy.armor = 60;
-    Enemy.accuracy = 75;
-    Enemy.critical = 30;
-    Enemy.skillShot = 15;
-    EnemyStatsRefresh();
-    EnemyStatsRefreshUI();
-    console.log("Enemy Class selected: " + Enemy.className)
-    return;
-  }
-  if (value === caster) {
-    Enemy.className = "Caster";
-    Enemy.hitPoints = 300;
-    Enemy.damage = 200;
-    Enemy.armor = 10;
-    Enemy.accuracy = 85;
-    Enemy.critical = 20;
-    Enemy.skillShot = 15;
-    EnemyStatsRefresh();
-    EnemyStatsRefreshUI();
-    console.log("Enemy Class selected: " + Enemy.className)
-    return;
-  }
-  if (value === spear) {
-    Enemy.className = "Spear";
-    Enemy.hitPoints = 550;
-    Enemy.damage = 100;
-    Enemy.armor = 60;
-    Enemy.accuracy = 80;
-    Enemy.critical = 15;
-    Enemy.skillShot = 25;
-    EnemyStatsRefresh();
-    EnemyStatsRefreshUI();
-    console.log("Enemy Class selected: " + Enemy.className)
-    return;
-  }
-  else {
-    Enemy.className = "None";
-    Enemy.hitPoints = 0;
-    Enemy.damage = 0;
-    Enemy.armor = 0;
-    Enemy.accuracy = 0;
-    Enemy.critical = 0;
-    Enemy.skillShot = 0;
-    EnemyStatsRefresh();
-    EnemyStatsRefreshUI();
-    console.log("Enemy Class selected: " + Enemy.className)
-    return;
-  }
-  
-}
-
-/*****************************
-User Class
-*****************************/
-/*
-Class Selection
-*/
-
-
-
-/*****************************
-Enemy Class Selection
-*****************************/
-/*
-var opponentSelection = Math.random();
-var enemyClass1 = Math.random();
-
-if (opponentSelection <= 0.20) {
-  opponentSelection = archer;
-  classSelect_Enemy(opponentSelection);
-}
-if (opponentSelection <= 0.40) {
-  classSelect_Enemy = axe;
-  classSelect_Enemy(opponentSelection);
-}
-
-if (opponentSelection <= 0.60) {
-  classSelect_Enemy = caster;
-  classSelect_Enemy(opponentSelection);
-}
-if (opponentSelection <= 0.80) {
-  classSelect_Enemy = sword;
-  classSelect_Enemy(opponentSelection);
-}
-if (opponentSelection >= 0.80) {
-  classSelect_Enemy = spear;
-  classSelect_Enemy(opponentSelection);
-}
-*/
-
-/*****************************	
-Class Matchups
-*****************************/
-var matchup = "User Class:" + " " + Player.className;
-    matchup += " " + "vs";
-    matchup += " " + "Enemy Class:" + " " + Enemy.className;
-
-var advantage;
-// same vs same
-if (Player.className === Enemy.className) {
-	advantage = "No advantage!";
-}
-
-// sword vs
-if (Player.className === "Sword") {
-	if (Enemy.className === "Axe") {
-		Player.accuracy *= 1.1;
-		Player.damage *= 1; 
-		advantage = "Increased Accuracy!";
-		Enemy.accuracy *= 0.9;
-		Enemy.damage *= 1.1;
-	}
-	if (Enemy.className === "Spear") {
-		Player.accuracy *= 0.9;
-		Player.damage *= 1;
-		advantage = "Decreased Accuracy!";
-	}
-	if (Enemy.className === "Caster") {
-		Player.accuracy *= 1.1;
-		Player.damage *= 1.1;
-		advantage = "Increased Accuracy and Damage!";
-		Enemy.accuracy *= 1.2;
-		Enemy.damage *= 1;
-	}
-	if (Enemy.className === "Archer") {
-		Player.accuracy *= 1.1;
-		Player.damage *= 1;
-		advantage = "Increased Accuracy!";
-		Enemy.accuracy *= 0.9;
-		Enemy.damage *= 1;
-	}
-}
-
-// axe vs
-if (Player.className === "Axe") {
-	if (Enemy.className === "Sword") {
-		Player.accuracy *= 0.9;
-		Player.damage *= 1.1;
-		advantage = "Decreased Accuracy and Increased Damage!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1; 
-	}
-	
-	if (Enemy.className === "Spear") {
-		Player.accuracy *= 0.8;
-		Player.damage *= 1;
-		advantage = "Decreased Accuracy!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1.1;
-	}
-	
-	if (Enemy.className === "Caster") {
-		Player.accuracy *= 1.1;
-		Player.damage *= 1.2;
-		advantage = "Increased Accuracy and Damage!";
-		Enemy.accuracy *= 1.2;
-		Enemy.damage *= 1;
-	}
-	
-	if (Enemy.className === "Archer") {
-		Player.accuracy *= 1.1;
-		Player.damage *= 1.2;
-		advantage = "Increased Accuracy and Damage!";
-		Enemy.accuracy *= 1;
-		Enemy.damage *= 1;
-	}
-}
-
-// spear vs
-if (Player.className === "Spear") {
-	if (Enemy.className === "Sword") {
-		Player.accuracy *= 1;
-		Player.damage *= 1;
-		advantage = "No Advantages!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1; 
-	}
-	
-	if (Enemy.className === "Axe") {
-		Player.accuracy *= 1.1;
-		Player.damage *= 1.1;
-		advantage = "Increased Accuracy and Damage!";
-		Enemy.accuracy *= 0.8;
-		Enemy.damage *= 1;
-	}
-	
-	if (Enemy.className === "Caster") {
-		Player.accuracy *= 1.1;
-		Player.damage *= 1;
-		advantage = "Increased Accuracy!";
-		Enemy.accuracy *= 1.2;
-		Enemy.damage *= 1;
-	}
-	
-	if (Enemy.className === "Archer") {
-		Player.accuracy *= 1.1;
-		Player.damage *= 1;
-		advantage = "Increased Accuracy!";
-		Enemy.accuracy *= 0.9;
-		Enemy.damage *= 1;
-	}
-}
-
-// caster vs
-if (Player.className === "Caster") {
-	if (Enemy.className === "Sword") {
-		Player.accuracy *= 1.2;
-		Player.damage *= 1;
-		advantage = "Increased Accuracy!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1.1;
-	}
-	
-	if (Enemy.className === "Axe") {
-		Player.accuracy *= 1.2;
-		Player.damage *= 1;
-		advantage = "Increased Accuracy!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1.2;
-	}
-	
-	if (Enemy.className === "Spear") {
-		Player.accuracy *= 1.2;
-		Player.damage *= 1;
-		advantage = "Increased Accuracy!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1;
-	}
-	
-	if (Enemy.className === "Archer") {
-		Player.accuracy *= 1.2;
-		Player.damage *= 1;
-		advantage = "Increased Accuracy!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1.2;
-	}
-}
-
-// archer vs
-if (Player.className === "Archer") {
-	if (Enemy.className === "Sword") {
-		Player.accuracy *= 0.9;
-		Player.damage *= 1;
-		advantage = "Decreased Accuracy!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1;
-	}
-	
-	if (Enemy.className === "Axe") {
-		Player.accuracy *= 1;
-		Player.damage *= 1;
-		advantage = "No Advantages!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1.2;
-	}
-	
-	if (Enemy.className === "Spear") {
-		Player.accuracy *= 0.9;
-		Player.damage *= 1;
-		advantage = "Decreased Accuracy!";
-		Enemy.accuracy *= 1.1;
-		Enemy.damage *= 1;
-	}
-	
-	if (Enemy.className === "Caster") {
-		Player.accuracy *= 1.1;
-		Player.damage *= 1.2;
-		advantage = "Increased Accuracy and Damage!";
-		Enemy.accuracy *= 1.2;
-		Enemy.damage *= 1;
-	}
-}
-
-console.log(matchup);
-console.log(advantage);
-
-/*****************************	
-Combat
-*****************************/
-
-/*****************************	
-UI
-*****************************/
-
-//add button functionality
-// Player
-document.getElementById("archer").addEventListener("click", function(){
-    classSelect(archer);
-});
-document.getElementById("sword").addEventListener("click", function(){
-    classSelect(sword);
-});
-document.getElementById("axe").addEventListener("click", function(){
-    classSelect(axe);
-});
-document.getElementById("spear").addEventListener("click", function(){
-    classSelect(spear);
-});
-document.getElementById("caster").addEventListener("click", function(){
-    classSelect(caster);
-});
-
-// Enemy
-document.getElementById("archer_enemy").addEventListener("click", function(){
-    classSelect_Enemy(archer);
-});
-document.getElementById("sword_enemy").addEventListener("click", function(){
-    classSelect_Enemy(sword);
-});
-document.getElementById("axe_enemy").addEventListener("click", function(){
-    classSelect_Enemy(axe);
-});
-document.getElementById("spear_enemy").addEventListener("click", function(){
-    classSelect_Enemy(spear);
-});
-document.getElementById("caster_enemy").addEventListener("click", function(){
-    classSelect_Enemy(caster);
-});
-
-// Fight and Reset
-document.getElementById("fight").addEventListener("click", function(){
-    combatRound();
-});
-document.getElementById("reset").addEventListener("click", function(){
-    combatReset();
-    battleDIV.innerHTML = ("<p>" + " " + "</p>");
-});
-
-//set UI element values
-var advantageDIV = document.getElementById("advantage");
-    advantageDIV.innerHTML = ("<p>" + advantage + "</p>");
-
-var battleDIV = document.getElementById("battle");
-    battleDIV.innerHTML = ("<p>" + " " + "</p>");
-var matchupDIV = document.getElementById("matchup");
-	matchupDIV.innerHTML = ("<p>" + matchup + "</p>");
-
-function PlayerStatsRefreshUI() {
-    PlayerDIV.innerHTML = ("Class: " + "<span class='stats'>" + Player.className + "</p>");
-    userHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + Player.hitPoints + "</p>");
-    userArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + Player.armor + "</p>");
-    userDamageDIV.innerHTML = ("Damage" + "<span class='stats'>" + Math.round(Player.damage, 0) + "</p>");
-    userAccuracyDIV.innerHTML = ("Accuracy: " + "<span class='stats'>" + Math.round(Player.accuracy, 0) + "</p>");
-    userCriticalDIV.innerHTML = ("Critical: " + "<span class='stats'>" + Player.critical + "</p>");
-}
-
-function EnemyStatsRefreshUI() {
-    enemyClassDIV.innerHTML = ("Class: " + "<span class='stats'>" + Enemy.className + "</p>");
-    enemyHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + Enemy.hitPoints + "</p>");
-    enemyArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + Enemy.armor + "</p>");
-    enemyDamageDIV.innerHTML = ("Damage" + "<span class='stats'>" + Math.round(Enemy.damage, 0) + "</p>");
-    enemyAccuracyDIV.innerHTML = ("Accuracy: " + "<span class='stats'>" + Math.round(Enemy.accuracy, 0) + "</p>");
-    enemyCriticalDIV.innerHTML = ("Critical: " + "<span class='stats'>" + Enemy.critical + "</p>");
-}
-
-var PlayerDIV = document.getElementById("className");
-    PlayerDIV.innerHTML = ("Class: " + "<span class='stats'>" + Player.class + "</p>");
-var userHPDIV = document.getElementById("classHP");
-    userHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + Player.hitPoints + "</p>");
-var userArmorDIV = document.getElementById("classArmor");
-    userArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + Player.armor + "</p>");
-var userDamageDIV = document.getElementById("classDamage");
-    userDamageDIV.innerHTML = ("Damage" + "<span class='stats'>" + Math.round(Player.damage, 0) + "</p>");
-var userAccuracyDIV = document.getElementById("classAccuracy");
-    userAccuracyDIV.innerHTML = ("Accuracy: " + "<span class='stats'>" + Math.round(Player.accuracy, 0) + "</p>");
-var userCriticalDIV = document.getElementById("classCritical");
-    userCriticalDIV.innerHTML = ("Critical: " + "<span class='stats'>" + Player.critical + "</p>");
-
-var enemyClassDIV = document.getElementById("enemyName");
-    enemyClassDIV.innerHTML = ("Class: " + "<span class='stats'>" + Enemy.class + "</p>");
-var enemyHPDIV = document.getElementById("enemyHP");
-    enemyHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + Enemy.hitPoints + "</p>");
-var enemyArmorDIV = document.getElementById("enemyArmor");
-    enemyArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + Enemy.armor + "</p>");
-var enemyDamageDIV = document.getElementById("enemyDamage");
-    enemyDamageDIV.innerHTML = ("Damage" + "<span class='stats'>" + Math.round(Enemy.damage, 0) + "</p>");
-var enemyAccuracyDIV = document.getElementById("enemyAccuracy");
-    enemyAccuracyDIV.innerHTML = ("Accuracy: " + "<span class='stats'>" + Math.round(Enemy.accuracy, 0) + "</p>");
-var enemyCriticalDIV = document.getElementById("enemyCritical");
-    enemyCriticalDIV.innerHTML = ("Critical: " + "<span class='stats'>" + Enemy.critical + "</p>");
-
-// combat log scroll to bottom
-function combatScrollDown(){
-var combatScrollBottom = document.getElementById("battle");
-    combatScrollBottom.scrollTop = combatScrollBottom.scrollHeight;
-};
-
-/*****************************	
-Combat Mechanics
-*****************************/
-function dmgRng(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return ((Math.random() * (max - min) + min) * 0.1).toFixed(2);
-}
-
-function dmgRng_enemy(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return ((Math.random() * (max - min) + min) * 0.1).toFixed(2);
-}
-
-function PlayerStatsRefresh() {
-  damageThisRound = Math.round(Player.damage * (1-(0+(Enemy.armor *0.01))), 0);
-  damageReset = damageThisRound;
-}
-
-function EnemyStatsRefresh() {
-  damageThisRound_enemy = Math.round(Enemy.damage * (1-(0+(Player.armor * 0.01))), 0);
-  damageReset_enemy = damageThisRound_enemy;
-}
-
-var i = 1;
-
-var damageThisRound = Math.round(Player.damage * (1-(0+(Enemy.armor *0.01))), 0);
-
-var damageReset = damageThisRound;
-// var totalDamage = 0;
-
-var damageThisRound_enemy = Math.round(Enemy.damage * (1-(0+(Player.armor * 0.01))), 0);
-var damageReset_enemy = damageThisRound_enemy;
-// var totalDamage_enemy = 0;
-
-function combat() {
-  // PlayerStatsRefresh();
-  // EnemyStatsRefresh();
-	
-    if(Enemy.hitPoints >= 0 || Player.hitPoints >= 0) {
-		var randomRoll_1 = Math.round(Math.random() * 100);
-		var randomRoll_2 = Math.round(Math.random() * 100);
-		var randomRoll_3 = Math.round(Math.random() * 100);
-    var randomRoll_4 = Math.round(Math.random() * 100);
-		var hitCheck = randomRoll_1 <= Player.accuracy;
-		var skillShot = randomRoll_2 <= Player.skillShot;
-		var critHit = randomRoll_3 <= Player.critical;
-      
-    var randomRoll_1_enemy = Math.round(Math.random() * 100);
-		var randomRoll_2_enemy = Math.round(Math.random() * 100);
-		var randomRoll_3_enemy = Math.round(Math.random() * 100);
-    var randomRoll_4_enemy = Math.round(Math.random() * 100);
-		var hitCheck_enemy = randomRoll_1_enemy <= Enemy.accuracy;
-		var skillShot_enemy = randomRoll_2_enemy <= Enemy.skillShot;
-		var critHit_enemy = randomRoll_3_enemy <= Enemy.critical;
-   
-	
-	if (hitCheck) {
-        damageThisRound = Math.round(Player.damage * (1-(0+(Enemy.armor *0.01))), 0);
-        damageThisRound *= dmgRng(8,10);
-        damageThisRound = Math.round(damageThisRound, 0);
-		console.log("Round " + i);
-		battleDIV.insertAdjacentHTML("beforeend","<p class='roundCounter'>" + "Round " + i + "</p>");
-        if (skillShot) {
-          if (Player.className === "Sword") {
-			damageThisRound *= 2.1 * dmgRng(8,10);
-            damageThisRound = Math.round(damageThisRound, 0);
-			console.log("You used your special skill! Double Strike!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Double Strike!" + "</p>");
-          }
-          if (Player.className === "Axe") {
-			damageThisRound = (Player.damage - (Enemy.armor * 0.7)) * 2 * dmgRng(8,10);
-            damageThisRound = Math.round(damageThisRound, 0);
-			console.log("You used your special skill! Skull Splitter!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Skull Splitter!" + "</p>");
-          }
-          if (Player.className === "Spear") {
-			Player.armor = Player.armor * 2;
-			console.log("You used your special skill! Bolster!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Bolster!" + "</p>");
-            userArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + Player.armor + "</p>");
-          }
-          if (Player.className === "Caster") {
-			damageThisRound *= 3 * dmgRng(7,10);
-            damageThisRound = Math.round(damageThisRound, 0);
-			console.log("You used your special skill! Elemental Destruction!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Elemental Destruction!" + "</p>");
-          }
-          if (Player.className === "Archer") {
-			damageThisRound = Player.damage;
-			console.log("You used your special skill! Armor Pierce!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You used your special skill! Armor Pierce!" + "</p>");
-          }
-		}
-		if (critHit) {
-			damageThisRound *= 1.5 * dmgRng(8,10);
-            damageThisRound = Math.round(damageThisRound, 0);
-			console.log("Critical Hit!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Critical Hit!" + "</p>");
-		}
-		console.log("You hit for " + damageThisRound + " damage!");
-		battleDIV.insertAdjacentHTML("beforeend","<p>" + "You hit for " + damageThisRound + " damage!" + "</p>");
-		Enemy.hitPoints -= Math.round(damageThisRound, 0);
-		console.log(randomRoll_1 + " vs " + Math.round(Player.accuracy) + " accuracy.");
- 
-		if (Enemy.hitPoints <= 0) {
-                Enemy.hitPoints = 0;
-                Enemy.isAlive = false;
-                enemyHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + Enemy.hitPoints + "</p>");
-				console.log("You killed the enemy!");
-				battleDIV.insertAdjacentHTML("beforeend","<p>" + "You killed the enemy!" + "</p>");
-          combatScrollDown()
-          return true;
-			}
-      
-		damageThisRound = damageReset;
-		}
-        
-        if (randomRoll_1 > Player.accuracy) {
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Round " + i + "</p>");
-            console.log("You miss!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "You miss!" + "</p>");
-			console.log(randomRoll_1 + " vs " + Math.round(Player.accuracy) + " accuracy.");
-			damageThisRound = damageReset;
-        }
-      
-      
-      if (hitCheck_enemy) {
-        damageThisRound_enemy = Math.round(Enemy.damage * (1-(0+(Player.armor * 0.01))), 0);
-        damageThisRound_enemy *= dmgRng(8,10);
-        damageThisRound_enemy = Math.round(damageThisRound_enemy, 0);
-        if (skillShot_enemy) {
-          if (Enemy.className === "Sword") {
-			damageThisRound_enemy *= 2.1 * dmgRng(8,10);
-            damageThisRound_enemy = Math.round(damageThisRound_enemy, 0);
-			console.log("The enemy used their skill! Double Strike!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Double Strike!" + "</p>");
-          }
-          if (Enemy.className === "Axe") {
-			damageThisRound_enemy = (Enemy.damage - (Player.armor * 0.7)) * 2 * dmgRng(8,10);
-            damageThisRound_enemy = Math.round(damageThisRound_enemy, 0);
-			console.log("The enemy used their special skill! Skull Splitter!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Skull Splitter!" + "</p>");
-          }
-          if (Enemy.className === "Spear") {
-			enemyClass.armor = Enemy.armor * 2;
-			console.log("The enemy used their special skill! Bolster!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Bolster!" + "</p>");
-            userArmorDIV.innerHTML = ("Armor: " + "<span class='stats'>" + Enemy.armor + "</p>");
-            
-          }
-          if (Enemy.className === "Caster") {
-			damageThisRound_enemy *= 3 * dmgRng(8,10);
-			console.log("You used your special skill! Elemental Destruction!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Elemental Destruction!" + "</p>");
-          }
-          if (Enemy.className === "Archer") {
-			damageThisRound_enemy = Enemy.damage;
-			console.log("The enemy used their special skill! Armor Pierce!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy used their special skill! Armor Pierce!" + "</p>");
-          }
-		}
-		if (critHit_enemy) {
-			damageThisRound_enemy *= 1.5 * dmgRng(8,10);
-            damageThisRound_enemy = Math.round(damageThisRound_enemy, 0);
-			console.log("Critical Hit!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "Critical Hit!" + "</p>");
-		}
-		console.log("Enemy hit you for " + damageThisRound_enemy + " damage!");
-		battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy hit you for " + damageThisRound_enemy + " damage!" + "</p>");
-		Player.hitPoints -= Math.round(damageThisRound_enemy, 0);
-		console.log(randomRoll_1_enemy + " vs " + Math.round(Enemy.accuracy) + " accuracy.");
-		i++;
-		if (Player.hitPoints <= 0) {
-                Player.hitPoints = 0;
-                Player.isAlive = false;
-                userHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + Player.hitPoints + "</p>");
-				console.log("The enemy killed you!");
-				battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy killed you!" + "</p>");
-          combatScrollDown()
-          return true;
-			}
-		damageThisRound_enemy = damageReset_enemy;
-		}
-        
-        if (randomRoll_1_enemy > Enemy.accuracy) {
-            console.log("The enemy missed!!");
-			battleDIV.insertAdjacentHTML("beforeend","<p>" + "The enemy missed!" + "</p>");
-			console.log(randomRoll_1_enemy + " vs " + Math.round(Player.accuracy) + " accuracy.");
-            
-			damageThisRound_enemy = damageReset;
-			i++;
-          }
-        }
-  
-  userHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + Player.hitPoints + "</p>");
-  enemyHPDIV.innerHTML = ("HP: " + "<span class='stats'>" + Enemy.hitPoints + "</p>");
-  
-  combatScrollDown()
-  return false;
-}
-
-function combatRound(){
-    var play = combat();       // Fight and check if anybody is dead
-    if(play === false){       // If nobody is dead then do another round
-        setTimeout(combatRound, 1000);
+  if (value === "archer") {
+    player.className = "Archer";
+    player.hitPoints = 450;
+    player.maxHitPoints = 450;
+    player.damage = 100;
+    player.armor = 20;
+    player.accuracy = 75;
+    player.critical = 20;
+    player.skillShot = 20;
+    player.isAlive = true;
+    
+    player.getClassName = function() {
+      return this.className;
     }
+    player.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    player.getDamage = function() {
+      return this.damage;
+    }
+    player.getArmor = function() {
+      return this.armor;
+    }
+    player.getAccuracy = function() {
+      return this.accuracy;
+    }
+    player.getCritical = function() {
+      return this.critical;
+    }
+    player.getSkillShot = function() {
+      return this.skillShot;
+    }
+    
+    
+    console.log("Class selected: " + player.className)
+    return;
+  }
+  if (value === "sword") {
+    player.className = "Sword";
+    player.hitPoints = 600;
+    player.maxHitPoints = 600;
+    player.damage = 90;
+    player.armor = 70;
+    player.accuracy = 85;
+    player.critical = 10;
+    player.skillShot = 20;
+    player.isAlive = true;
+    
+    player.getClassName = function() {
+      return this.className;
+    }
+    player.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    player.getDamage = function() {
+      return this.damage;
+    }
+    player.getArmor = function() {
+      return this.armor;
+    }
+    player.getAccuracy = function() {
+      return this.accuracy;
+    }
+    player.getCritical = function() {
+      return this.critical;
+    }
+    player.getSkillShot = function() {
+      return this.skillShot;
+    }
+    
+    console.log("Class selected: " + player.className)
+    return;
+  }
+  if (value === "axe") {
+    player.className = "Axe";
+    player.hitPoints = 500;
+    player.maxHitPoints = 500;
+    player.damage = 170;
+    player.armor = 60;
+    player.accuracy = 75;
+    player.critical = 30;
+    player.skillShot = 15;
+    player.isAlive = true;
+    
+    player.getClassName = function() {
+      return this.className;
+    }
+    player.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    player.getDamage = function() {
+      return this.damage;
+    }
+    player.getArmor = function() {
+      return this.armor;
+    }
+    player.getAccuracy = function() {
+      return this.accuracy;
+    }
+    player.getCritical = function() {
+      return this.critical;
+    }
+    player.getSkillShot = function() {
+      return this.skillShot;
+    }
+    console.log("Class selected: " + player.className)
+    return;
+  }
+  if (value === "caster") {
+    player.className = "Caster";
+    player.hitPoints = 300;
+    player.maxHitPoints = 300;
+    player.damage = 200;
+    player.armor = 10;
+    player.accuracy = 85;
+    player.critical = 20;
+    player.skillShot = 15;
+    player.isAlive = true;
+    
+    player.getClassName = function() {
+      return this.className;
+    }
+    player.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    player.getDamage = function() {
+      return this.damage;
+    }
+    player.getArmor = function() {
+      return this.armor;
+    }
+    player.getAccuracy = function() {
+      return this.accuracy;
+    }
+    player.getCritical = function() {
+      return this.critical;
+    }
+    player.getSkillShot = function() {
+      return this.skillShot;
+    }
+    console.log("Class selected: " + player.className)
+    return;
+  }
+  if (value === "spear") {
+    player.className = "Spear";
+    player.hitPoints = 550;
+    player.maxHitPoints = 550;
+    player.damage = 100;
+    player.armor = 60;
+    player.accuracy = 80;
+    player.critical = 15;
+    player.skillShot = 25;
+    player.isAlive = true;
+    
+    player.getClassName = function() {
+      return this.className;
+    }
+    player.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    player.getDamage = function() {
+      return this.damage;
+    }
+    player.getArmor = function() {
+      return this.armor;
+    }
+    player.getAccuracy = function() {
+      return this.accuracy;
+    }
+    player.getCritical = function() {
+      return this.critical;
+    }
+    player.getSkillShot = function() {
+      return this.skillShot;
+    }
+    console.log("Class selected: " + player.className)
+    return;
+  }
+  else {
+    player.className = "None";
+    player.hitPoints = 0;
+    player.damage = 0;
+    player.armor = 0;
+    player.accuracy = 0;
+    player.critical = 0;
+    player.skillShot = 0;
+    enemy.isAlive = false;
+    
+    console.log("Class selected: " + player.className)
+    return;
+  }
+
+
+  
 }
 
-function combatReset() {
-  PlayerStatsRefresh();
-  EnemyStatsRefresh();
-  i = 1;
+function classSelect_enemy(value) {
+  if (value === "archer") {
+    enemy.className = "Archer";
+    enemy.hitPoints = 450;
+    enemy.maxHitPoints = 450;
+    enemy.damage = 100;
+    enemy.armor = 20;
+    enemy.accuracy = 75;
+    enemy.critical = 20;
+    enemy.skillShot = 20;
+    enemy.isAlive = true;
+    
+    enemy.getClassName = function() {
+      return this.className;
+    }
+    enemy.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    enemy.getDamage = function() {
+      return this.damage;
+    }
+    enemy.getArmor = function() {
+      return this.armor;
+    }
+    enemy.getAccuracy = function() {
+      return this.accuracy;
+    }
+    enemy.getCritical = function() {
+      return this.critical;
+    }
+    enemy.getSkillShot = function() {
+      return this.skillShot;
+    }
+    console.log("enemy Class selected: " + enemy.className)
+    return;
+  }
+  if (value === "sword") {
+    enemy.className = "Sword";
+    enemy.hitPoints = 600;
+    enemy.maxHitPoints = 600;
+    enemy.damage = 90;
+    enemy.armor = 70;
+    enemy.accuracy = 85;
+    enemy.critical = 10;
+    enemy.skillShot = 20;
+    enemy.isAlive = true;
+    
+    enemy.getClassName = function() {
+      return this.className;
+    }
+    enemy.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    enemy.getDamage = function() {
+      return this.damage;
+    }
+    enemy.getArmor = function() {
+      return this.armor;
+    }
+    enemy.getAccuracy = function() {
+      return this.accuracy;
+    }
+    enemy.getCritical = function() {
+      return this.critical;
+    }
+    enemy.getSkillShot = function() {
+      return this.skillShot;
+    }
+    console.log("enemy Class selected: " + enemy.className)
+    return;
+  }
+  if (value === "axe") {
+    enemy.className = "Axe";
+    enemy.hitPoints = 500;
+    enemy.maxHitPoints = 500;
+    enemy.damage = 170;
+    enemy.armor = 60;
+    enemy.accuracy = 75;
+    enemy.critical = 30;
+    enemy.skillShot = 15;
+    enemy.isAlive = true;
+    
+    enemy.getClassName = function() {
+      return this.className;
+    }
+    enemy.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    enemy.getDamage = function() {
+      return this.damage;
+    }
+    enemy.getArmor = function() {
+      return this.armor;
+    }
+    enemy.getAccuracy = function() {
+      return this.accuracy;
+    }
+    enemy.getCritical = function() {
+      return this.critical;
+    }
+    enemy.getSkillShot = function() {
+      return this.skillShot;
+    }
+    console.log("enemy Class selected: " + enemy.className)
+    return;
+  }
+  if (value === "caster") {
+    enemy.className = "Caster";
+    enemy.hitPoints = 300;
+    enemy.maxHitPoints = 300;
+    enemy.damage = 200;
+    enemy.armor = 10;
+    enemy.accuracy = 85;
+    enemy.critical = 20;
+    enemy.skillShot = 15;
+    enemy.isAlive = true;
+    
+    enemy.getClassName = function() {
+      return this.className;
+    }
+    enemy.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    enemy.getDamage = function() {
+      return this.damage;
+    }
+    enemy.getArmor = function() {
+      return this.armor;
+    }
+    enemy.getAccuracy = function() {
+      return this.accuracy;
+    }
+    enemy.getCritical = function() {
+      return this.critical;
+    }
+    enemy.getSkillShot = function() {
+      return this.skillShot;
+    }
+    console.log("enemy Class selected: " + enemy.className)
+    return;
+  }
+  if (value === "spear") {
+    enemy.className = "Spear";
+    enemy.hitPoints = 550;
+    enemy.maxHitPoints = 550;
+    enemy.damage = 100;
+    enemy.armor = 60;
+    enemy.accuracy = 80;
+    enemy.critical = 15;
+    enemy.skillShot = 25;
+    enemy.isAlive = true;
+    
+    enemy.getClassName = function() {
+      return this.className;
+    }
+    enemy.getHitPoints = function() {
+      return this.hitPoints;
+    }
+    enemy.getDamage = function() {
+      return this.damage;
+    }
+    enemy.getArmor = function() {
+      return this.armor;
+    }
+    enemy.getAccuracy = function() {
+      return this.accuracy;
+    }
+    enemy.getCritical = function() {
+      return this.critical;
+    }
+    enemy.getSkillShot = function() {
+      return this.skillShot;
+    }
+    console.log("enemy Class selected: " + enemy.className)
+    return;
+  }
+  else {
+    enemy.className = "None";
+    enemy.hitPoints = 0;
+    enemy.damage = 0;
+    enemy.armor = 0;
+    enemy.accuracy = 0;
+    enemy.critical = 0;
+    enemy.skillShot = 0;
+    enemy.isAlive = false;
+    
+    
+    console.log("enemy Class selected: " + enemy.className)
+    return;
+  }
+
+ 
 }
-
-//combatRound();
-
-/* 
-
-Note about facing, back, and side for advantage
-
-After unit moves, set (Player) sideDirection(x,y) and set backDirection(x)
-When enemy attacks, if attacker.faceDirection === (Player) sideDirection
-  get bonus ie 15% accuracy and damage
-When enemy attacks, if attacker.faceDirection === (Player) backDirection
-  get bonus ie 25% accuracy and damage
-.faceDirection === .backDirection && can actually attack target
-then add in damage bonus - THOUGHTS
-*/
